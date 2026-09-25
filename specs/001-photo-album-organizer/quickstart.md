@@ -81,7 +81,8 @@ npm run perf:upload         # Playwright: 100 mixed JPEG/HEIC fixtures in one ac
 | LCP on `/` (100 albums) | ≤ 2.5 s p75 | Lighthouse (SC-002) |
 | INP / CLS | ≤ 200 ms / ≤ 0.1 | Lighthouse and Playwright interaction trace, incl. scrolling a 1,000-photo album |
 | Initial JS per route | ≤ 200 KB compressed | `next build` output, checked by `npm run perf:bundle` |
-| Page render time on the server (read) | p95 ≤ 300 ms | `library.render.duration_ms` in logs during the Lighthouse run |
+| Page render time on the server (read) | p95 ≤ 300 ms | `library.render` and `album.render` `duration_ms`, measured by `tests/perf/read-latency.spec.ts` (T091) |
+| Media reads `thumb` / `full` (read) | p95 ≤ 300 ms to headers sent | `media.served.duration_ms`, measured by T091 |
 | `POST /api/photos` (write) | p95 ≤ 500 ms for JPEG ≤ 10 MB | `photo.upload.accepted.duration_ms`. HEIC is tracked separately; see plan's Complexity Tracking |
 | 100-photo upload | ≤ 2 min | `perf:upload` (SC-004) |
 

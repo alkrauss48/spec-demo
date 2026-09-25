@@ -104,21 +104,23 @@ src/
 │   ├── albums/[date]/
 │   │   ├── page.tsx                  # Album view
 │   │   └── photos/[photoId]/page.tsx # Single-photo viewer
-│   ├── sign-in/page.tsx | sign-up/page.tsx
+│   ├── sign-in/page.tsx + actions.ts | sign-up/page.tsx + actions.ts
 │   ├── api/
 │   │   ├── auth/[...all]/route.ts    # Better Auth handler
 │   │   ├── photos/route.ts           # POST upload
 │   │   └── client-errors/route.ts    # POST client error report
 │   └── media/photos/[photoId]/[variant]/route.ts  # GET thumb|full (owner only)
 ├── components/
-│   ├── ui/                           # Shared set: Button, ProgressBar, EmptyState, ErrorState, LoadingState, VisuallyHidden
+│   ├── ui/                           # Shared set: Button, ProgressBar, EmptyState, ErrorState, LoadingState, VisuallyHidden, SafeImage, ErrorReporter (client)
 │   ├── library/                      # DateGroup, AlbumTile, TileMosaic, UploadPanel (client)
 │   └── album/                        # PhotoGrid, FocusFromHash (client), PhotoViewer, ViewerKeys (client)
 ├── server/
+│   ├── env.ts                        # env loader and validation
 │   ├── db.ts                         # better-sqlite3 connection + migration runner
 │   ├── auth.ts                       # Better Auth config, requireUser()
 │   ├── log.ts                        # JSON logger, request context
 │   ├── photos/
+│   │   ├── ids.ts                    # 128-bit photo IDs
 │   │   ├── detect-format.ts          # magic bytes
 │   │   ├── capture-date.ts           # exifr read + fallback rules
 │   │   ├── strip-metadata.ts         # lossless JPEG/PNG/WebP allow-list rewrite
@@ -138,9 +140,17 @@ tests/
 ├── fixtures/photos/                  # reference set (dates, GPS, HEIC/PNG/WebP, non-image, duplicate, 51 MB)
 ├── unit/                             # detect-format, capture-date, strip-metadata, queries, dates
 ├── integration/                      # POST /api/photos, media auth, limit & duplicate races
-└── e2e/                              # US1–US3 scenarios, keyboard, axe, 320px, states, privacy
+├── e2e/                              # US1–US3 scenarios, keyboard, axe, 320px, states, privacy
+└── perf/                             # upload SC-004, large-album INP, read latency
 scripts/
-└── seed.ts                           # load/perf seeding (quickstart V14 and perf)
+├── migrate.ts                        # npm run db:migrate
+├── seed.ts                           # load/perf seeding (quickstart V14 and perf)
+├── check-bundle.ts                   # 200 KB initial-JS budget
+├── check-log-privacy.ts              # no personal data in server logs
+└── lighthouse-auth.cjs               # Lighthouse CI sign-in script
+
+lighthouserc.json                     # Lighthouse CI budgets
+.github/workflows/ci.yml              # constitution quality gates
 ```
 
 **Structure Decision**: A single full-stack Next.js project at the repository root. The spec

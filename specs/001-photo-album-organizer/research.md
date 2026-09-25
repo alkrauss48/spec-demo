@@ -259,7 +259,8 @@ defaults, as few dependencies as possible.
   - **Signals that confirm the feature works**: `photo.upload.accepted` (format, bytes,
     date_source, duration_ms), `photo.upload.rejected` (reason code),
     `photo.upload.duplicate`, `library.render` (album_count, duration_ms),
-    `media.served` (variant, status), `client.error`.
+    `album.render` (duration_ms), `photo.render` (duration_ms),
+    `media.served` (variant, status, duration_ms), `client.error`.
 - **Alternatives considered**: *pino*. Very good, but a dependency for what is a few lines
   of `JSON.stringify` at this scale. It is a drop-in replacement if log volume grows.
 
