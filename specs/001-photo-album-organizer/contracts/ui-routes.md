@@ -78,8 +78,10 @@ returns 404.
 **Renders**
 
 - `<h1>` visually hidden: "Photo {n} of {total}, Mar 14, 2026".
-- `<img src="/media/photos/{id}/full" alt="…" width height>` scaled to fit the viewport
-  (`object-fit: contain`, max 100vw × available height) at full original resolution.
+- `<img src="/media/photos/{id}/full" alt="Photo {n} of {total}, taken {Mar 14, 2026, 11:30 PM}" width height>`,
+  or for `dateSource = upload`: `alt="Photo {n} of {total}, date not recorded, added {Mar 20, 2026}"`.
+  The image is scaled to fit the viewport (`object-fit: contain`, max 100vw × available
+  height) at full original resolution.
 - Caption: capture date and time ("Mar 14, 2026, 11:30 PM"), or "Date not recorded, added
   Mar 20, 2026" with the badge.
 - Controls (real links, so they work without JavaScript): **Previous**, **Next** (omitted

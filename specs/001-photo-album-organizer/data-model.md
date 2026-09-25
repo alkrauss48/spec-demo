@@ -119,7 +119,6 @@ beyond its date.
 | `name` / label | `date` formatted in `en-US` as `MMM d, yyyy` (e.g. "Mar 14, 2026"), FR-004. Formatted from the date string, not with the viewer's time zone. |
 | `photo_count` | `COUNT(*)` |
 | `preview_photos` | First ≤ 4 photos by `(capture_time, added_at, id)` ascending (FR-003) |
-| `has_fallback_dates` | `MAX(date_source = 'upload')`. Lets the tile or album show that some dates were not recorded. |
 
 **Invariants** (true by construction)
 

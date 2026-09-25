@@ -84,8 +84,9 @@ defaults, as few dependencies as possible.
   - **JPEG, PNG, WebP**: **lossless container-level stripping** in a small in-house module
     (`src/server/photos/strip-metadata.ts`). It rewrites the file keeping only an
     allow-list of image-data segments or chunks. Pixel data is never decoded or re-encoded.
-    - JPEG: keep SOI, APP0 (JFIF), APP2 (ICC profile), DQT, DHT, SOF*, DRI, SOS and scan
-      data, and EOI. Drop APP1 (EXIF/XMP), APP13 (IPTC), APP3–APP15, and COM. If the
+    - JPEG: keep SOI, APP0 (JFIF), APP2 (ICC profile), APP14 (Adobe color-transform
+      flag, needed to decode CMYK/YCCK JPEGs correctly), DQT, DHT, SOF*, DRI, SOS and scan
+      data, and EOI. Drop APP1 (EXIF/XMP), APP13 (IPTC), the rest of APP3–APP15, and COM. If the
       original EXIF Orientation is not 1, write a new minimal APP1 EXIF block containing
       **only** the Orientation tag, so the photo still displays upright.
     - PNG: keep IHDR, PLTE, IDAT, IEND, tRNS, gAMA, cHRM, sRGB, iCCP, sBIT, pHYs, bKGD.

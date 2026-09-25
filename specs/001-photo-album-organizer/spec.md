@@ -182,10 +182,13 @@ capture-time order, open one at full size, and step forward and back through the
   location (GPS) and all other embedded personal metadata, such as camera serial number,
   device owner name, and comments, before the photo is stored. No stored or displayed copy
   of a photo, and no log or analytics record, may contain that metadata. Removing metadata
-  MUST NOT reduce the image's resolution or visible quality; the full-resolution image is
-  kept.
-- **FR-016**: Every view (library, album, single photo) MUST have defined loading, empty,
-  and error states.
+  MUST NOT reduce the image's resolution. JPEG, PNG, and WebP photos MUST keep
+  pixel-identical image data. HEIC photos may be converted to a widely supported format at
+  full resolution, provided the result is visually indistinguishable from the original.
+- **FR-016**: Every view (library, album, single photo) MUST have defined loading and error
+  states. The library MUST have an empty state. Because an album exists only while it
+  contains photos, an album or photo that does not exist for the user MUST show a not-found
+  state instead of an empty view.
 - **FR-017**: All views MUST be fully operable by keyboard and assistive technology, and
   every photo and tile MUST have a text alternative.
 
