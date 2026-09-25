@@ -1,0 +1,127 @@
+{
+  "2026-03-14_a.jpg": {
+    "capture_date": "2026-03-14",
+    "capture_time": "2026-03-14T09:00:00",
+    "date_source": "exif",
+    "format": "jpeg",
+    "width": 320,
+    "height": 240
+  },
+  "2026-03-14_b.jpg": {
+    "capture_date": "2026-03-14",
+    "capture_time": "2026-03-14T10:00:00",
+    "date_source": "exif",
+    "format": "jpeg",
+    "width": 320,
+    "height": 240
+  },
+  "2026-03-02.jpg": {
+    "capture_date": "2026-03-02",
+    "capture_time": "2026-03-02T12:00:00",
+    "date_source": "exif",
+    "format": "jpeg",
+    "width": 320,
+    "height": 240
+  },
+  "2026-03-14_c.png": {
+    "capture_date": "2026-03-14",
+    "capture_time": "2026-03-14T11:00:00",
+    "date_source": "exif",
+    "format": "png",
+    "width": 320,
+    "height": 240,
+    "forbidden": ["Jane Owner", "XMP Creator"]
+  },
+  "ok.webp": {
+    "capture_date": "2026-02-10",
+    "capture_time": "2026-02-10T08:00:00",
+    "date_source": "exif",
+    "format": "webp",
+    "width": 320,
+    "height": 240,
+    "forbidden": ["Jane Owner", "XMP Creator"]
+  },
+  "2026-03-14_2330.jpg": {
+    "capture_date": "2026-03-14",
+    "capture_time": "2026-03-14T23:30:00",
+    "date_source": "exif",
+    "format": "jpeg",
+    "width": 320,
+    "height": 240
+  },
+  "no-date.jpg": {
+    "capture_date": null,
+    "date_source": "upload",
+    "format": "jpeg",
+    "width": 320,
+    "height": 240
+  },
+  "future-date.jpg": {
+    "capture_date": null,
+    "date_source": "upload",
+    "format": "jpeg",
+    "width": 320,
+    "height": 240
+  },
+  "pre-1900.jpg": {
+    "capture_date": null,
+    "date_source": "upload",
+    "format": "jpeg",
+    "width": 320,
+    "height": 240
+  },
+  "gps-serial-comment.jpg": {
+    "capture_date": "2026-03-14",
+    "capture_time": "2026-03-14T12:34:56",
+    "date_source": "exif",
+    "format": "jpeg",
+    "width": 240,
+    "height": 320,
+    "forbidden": [
+      "Jane Owner",
+      "SN-998877",
+      "LENS-4455",
+      "secret comment",
+      "XMP Creator",
+      "IPTC Byline"
+    ]
+  },
+  "too-big-51mb.jpg": {
+    "capture_date": null,
+    "date_source": null,
+    "format": "jpeg"
+  },
+  "broken.jpg": {
+    "capture_date": null,
+    "date_source": null,
+    "format": "jpeg"
+  },
+  "cmyk-adobe.jpg": {
+    "capture_date": null,
+    "date_source": "upload",
+    "format": "jpeg",
+    "width": 160,
+    "height": 120
+  },
+  "notes.pdf": {
+    "capture_date": null,
+    "date_source": null,
+    "format": null
+  },
+  "2026-01-20.heic": {
+    "capture_date": "2026-01-20",
+    "capture_time": "2026-01-20T14:15:00",
+    "date_source": "exif",
+    "format": "heic",
+    "width": 256,
+    "height": 192
+  },
+  "2026-01-21-rotated.heic": {
+    "capture_date": "2026-01-21",
+    "capture_time": "2026-01-21T08:30:00",
+    "date_source": "exif",
+    "format": "heic",
+    "width": 80,
+    "height": 120
+  }
+}

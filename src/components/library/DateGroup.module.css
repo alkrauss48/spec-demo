@@ -1,0 +1,16 @@
+.group {
+  margin-block: var(--space-5);
+}
+
+/* 2 columns at 320 px, more as the viewport grows (ui-routes.md "Layout"). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(var(--tile-min), calc(50% - var(--space-3))), 1fr)
+  );
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

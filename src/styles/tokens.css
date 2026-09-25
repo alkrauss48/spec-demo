@@ -1,0 +1,209 @@
+/*
+ * Design tokens (Principle III, R14). Text/background pairs meet WCAG 2.2 AA:
+ * --color-text on --color-bg is 15.8:1, --color-text-muted on --color-bg is 7.0:1,
+ * --color-primary-text on --color-primary is 7.3:1, --color-border (UI) on --color-bg is 3.3:1.
+ */
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f4f5f7;
+  --color-text: #16181d;
+  --color-text-muted: #4a4f5a;
+  --color-border: #8a8f99;
+  --color-primary: #1f4fd1;
+  --color-primary-hover: #183fa8;
+  --color-primary-text: #ffffff;
+  --color-danger: #b3261e;
+  --color-warning-bg: #fff4d6;
+  --color-warning-text: #5c3d00;
+  --color-placeholder: #d9dce1;
+  --color-skeleton: #e6e8eb;
+  --color-focus: #1f4fd1;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --focus-ring: 3px solid var(--color-focus);
+  --focus-offset: 2px;
+
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+
+  /* Breakpoints, for reference in media queries (custom properties can't be used there). */
+  --bp-sm: 40rem;
+  --bp-md: 64rem;
+
+  --tile-min: 9.5rem;
+  --content-max: 80rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+a {
+  color: var(--color-primary);
+}
+
+h1,
+h2 {
+  line-height: 1.2;
+  margin: 0 0 var(--space-3);
+}
+
+h1 {
+  font-size: var(--text-xl);
+}
+
+h2 {
+  font-size: var(--text-lg);
+}
+
+img {
+  max-width: 100%;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: -100px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border-radius: var(--radius-sm);
+  z-index: 10;
+}
+
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.site-header a {
+  color: var(--color-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.page {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+/* Form fields, shared by the sign-in and sign-up pages. */
+.auth {
+  max-width: 24rem;
+  margin: var(--space-6) auto;
+  padding: 0 var(--space-4);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field input {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  min-height: 2.75rem;
+}
+
+.field input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.field-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.field-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Library page header: title, usage line, and the Add photos control. */
+.library-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.usage {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.usage[data-limit-reached='true'] {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-weight: 600;
+}
