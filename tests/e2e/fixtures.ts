@@ -87,8 +87,9 @@ export async function expectNoHorizontalScroll(page: Page) {
   expect(overflow).toBeLessThanOrEqual(0);
 }
 
-/** Sets fixture files on the (hidden) Add photos input. */
+/** Sets fixture files on the (hidden) Add photos input, once the page has hydrated. */
 export async function uploadFixtures(page: Page, names: string[]) {
+  await page.locator('[data-upload-ready]').waitFor({ state: 'attached' });
   await page
     .locator('input[type="file"]')
     .first()
@@ -96,8 +97,8 @@ export async function uploadFixtures(page: Page, names: string[]) {
 }
 
 export const test = base.extend<{ signedInPage: SignedIn }>({
-  signedInPage: async ({ page }, use) => {
+  signedInPage: async ({ page }, provide) => {
     const email = await signUp(page);
-    await use({ page, email });
+    await provide({ page, email });
   },
 });

@@ -117,10 +117,8 @@ img {
   border-bottom: 1px solid var(--color-border);
 }
 
-.site-header a {
-  color: var(--color-text);
+.site-name {
   font-weight: 600;
-  text-decoration: none;
 }
 
 .page {

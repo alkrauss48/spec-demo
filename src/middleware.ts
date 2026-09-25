@@ -29,5 +29,8 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image).*)'],
+  // POST /api/photos is left out: when middleware runs, Next.js buffers request bodies for it
+  // and truncates them past 10 MB, which would corrupt uploads of up to 50 MB. That route
+  // assigns its own request ID and checks the session itself.
+  matcher: ['/((?!_next/static|_next/image|api/photos).*)'],
 };

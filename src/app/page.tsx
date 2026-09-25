@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { DateGroup } from '@/components/library/DateGroup';
+import { AddPhotosButton, UploadPanel } from '@/components/library/UploadPanel';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PHOTO_LIMIT, usageLabel } from '@/lib/dates';
 import { NotAuthenticated, requireUser } from '@/server/auth';
@@ -41,9 +42,10 @@ export default async function LibraryPage() {
               {usageLabel(photoCount)}
             </p>
           </div>
+          <UploadPanel />
         </div>
         {photoCount === 0 ? (
-          <EmptyState heading="No photos yet">
+          <EmptyState heading="No photos yet" action={<AddPhotosButton />}>
             Add photos from your device. Each one is placed in an album for the day it was taken.
           </EmptyState>
         ) : (

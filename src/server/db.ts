@@ -6,15 +6,24 @@ import { env } from './env';
 
 let db: Database.Database | undefined;
 
-/** The process-wide connection. WAL mode, foreign keys on, 5 s busy timeout. */
-export function getDb(): Database.Database {
-  if (db) return db;
+/** A new connection: WAL mode, foreign keys on, 5 s busy timeout. */
+export function openConnection(): Database.Database {
   const path = env().DATABASE_PATH;
   mkdirSync(dirname(path), { recursive: true });
-  db = new Database(path);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-  db.pragma('busy_timeout = 5000');
+  const conn = new Database(path);
+  conn.pragma('journal_mode = WAL');
+  conn.pragma('foreign_keys = ON');
+  conn.pragma('busy_timeout = 5000');
+  return conn;
+}
+
+/**
+ * The connection for this app's own (synchronous) queries. Better Auth gets a separate one
+ * (see auth.ts): its adapter keeps transactions open across awaits, and sharing a connection
+ * would let our reads see its snapshot and our writes nest inside its transaction.
+ */
+export function getDb(): Database.Database {
+  db ??= openConnection();
   return db;
 }
 

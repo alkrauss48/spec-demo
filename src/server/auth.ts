@@ -1,8 +1,9 @@
 import 'server-only';
 import { betterAuth } from 'better-auth';
 import { nextCookies } from 'better-auth/next-js';
+import { SqliteDialect } from 'kysely';
 import { headers } from 'next/headers';
-import { getDb } from './db';
+import { openConnection } from './db';
 import { env } from './env';
 
 export class NotAuthenticated extends Error {
@@ -15,7 +16,15 @@ export class NotAuthenticated extends Error {
 function createAuth() {
   const { BETTER_AUTH_SECRET, BETTER_AUTH_URL } = env();
   return betterAuth({
-    database: getDb(),
+    // Its own connection, never shared with getDb() (see db.ts). Kysely's SQLite driver has no
+    // connection lock, so with interactive transactions on, concurrent requests interleave
+    // their BEGIN/COMMIT on this one connection and some session lookups never settle. With
+    // them off, every statement runs on its own (better-sqlite3 runs each one synchronously).
+    database: {
+      dialect: new SqliteDialect({ database: openConnection() }),
+      type: 'sqlite',
+      transaction: false,
+    },
     secret: BETTER_AUTH_SECRET,
     baseURL: BETTER_AUTH_URL,
     emailAndPassword: { enabled: true, autoSignIn: true },

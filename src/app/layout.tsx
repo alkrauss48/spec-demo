@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -35,7 +34,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           Skip to main content
         </a>
         <header className="site-header">
-          <Link href="/">Photos</Link>
+          <span className="site-name">Photos</span>
           {signedIn && (
             <form action={signOut}>
               <Button type="submit" variant="secondary">

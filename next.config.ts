@@ -15,8 +15,12 @@ const csp = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['better-sqlite3', 'sharp'],
+  serverExternalPackages: ['better-sqlite3', 'sharp', 'heic-decode', 'libheif-js'],
   poweredByHeader: false,
+  // Next's built-in gzip stalled streamed RSC responses under concurrent load (seen with
+  // Next 15.5 on Node 26): router.refresh() after an upload never finished rendering.
+  // Compress at the reverse proxy instead.
+  compress: false,
   async headers() {
     return [
       {
