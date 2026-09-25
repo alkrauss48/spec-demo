@@ -98,12 +98,13 @@ specs/001-photo-album-organizer/
 ```text
 src/
 ├── app/                              # Next.js App Router
-│   ├── layout.tsx                    # Root layout, skip link, tokens, error reporter
-│   ├── page.tsx                      # Library (/)
-│   ├── loading.tsx | error.tsx | not-found.tsx
+│   ├── layout.tsx                    # Root layout, skip link, tokens, error reporter (no session lookup)
+│   ├── (library)/page.tsx + loading.tsx  # Library (/); route group keeps its loading boundary off other routes
+│   ├── error.tsx | not-found.tsx
 │   ├── albums/[date]/
-│   │   ├── page.tsx                  # Album view
-│   │   └── photos/[photoId]/page.tsx # Single-photo viewer
+│   │   ├── layout.tsx                # Ownership check before streaming, so misses are real 404s
+│   │   ├── (album)/page.tsx + loading.tsx  # Album view
+│   │   └── photos/[photoId]/layout.tsx + page.tsx + loading.tsx  # Single-photo viewer
 │   ├── sign-in/page.tsx + actions.ts | sign-up/page.tsx + actions.ts
 │   ├── api/
 │   │   ├── auth/[...all]/route.ts    # Better Auth handler
@@ -111,7 +112,7 @@ src/
 │   │   └── client-errors/route.ts    # POST client error report
 │   └── media/photos/[photoId]/[variant]/route.ts  # GET thumb|full (owner only)
 ├── components/
-│   ├── ui/                           # Shared set: Button, ProgressBar, EmptyState, ErrorState, LoadingState, VisuallyHidden, SafeImage, ErrorReporter (client)
+│   ├── ui/                           # Shared set: Button, ProgressBar, EmptyState, ErrorState, LoadingState, VisuallyHidden, SafeImage, ErrorReporter (client), SiteHeader, SignOutButton
 │   ├── library/                      # DateGroup, AlbumTile, TileMosaic, UploadPanel (client)
 │   └── album/                        # PhotoGrid, FocusFromHash (client), PhotoViewer, ViewerKeys (client)
 ├── server/
@@ -132,7 +133,8 @@ src/
 ├── lib/
 │   └── dates.ts                      # album/group label formatting, local-time helpers (shared client/server)
 ├── styles/tokens.css
-└── middleware.ts                     # request ID, auth redirect for pages
+├── types/heic-decode.d.ts            # types for heic-decode, which ships none
+└── middleware.ts                     # request ID, auth redirect for pages (not /api/photos; see below)
 
 db/migrations/                        # 0001_photo.sql (Better Auth tables via its CLI migration)
 
@@ -181,5 +183,8 @@ handlers), which keeps the metadata, database, and auth code out of client bundl
 | tsx (dev) | Runs the TypeScript scripts (`migrate`, `seed`, checks) without a build step | Compiling scripts with `tsc` adds a second build output. Plain JS scripts would lose type sharing with `src/server` |
 | ESLint + Prettier (dev) | Gate 1 (lint and format). `eslint-config-next` is the framework default | None. Required by the constitution |
 | gitleaks-action (CI only) | Secret scan (Gate 5, Principle IV) | GitHub secret scanning isn't available on every plan and can't fail a PR check locally |
+| kysely (declared peer of Better Auth) | Better Auth needs a Kysely `SqliteDialect` so it can run on its own connection with interactive transactions off. Kysely's SQLite driver has no connection lock, so with transactions on, concurrent requests interleaved `BEGIN`/`COMMIT` on one connection and some session lookups never settled (found in T056) | Passing the better-sqlite3 handle directly (Better Auth's default) turns on those unlocked transactions |
+| `overrides.postcss` ^8.5.23 in package.json | Next 15.5 pins postcss 8.4.31, which has high-severity advisories; the gate is `npm audit --omit=dev --audit-level=high` | Upgrading to Next 16 is a breaking change outside this feature |
 | Custom `strip-metadata.ts` (about 200 lines) | FR-015 requires removing all personal metadata **without** lowering quality | sharp re-encoding lowers JPEG quality. exiftool-vendored bundles Perl and spawns a process per upload. piexifjs misses XMP and IPTC (R6) |
 | **Budget exception**: `POST /api/photos` p95 > 500 ms for HEIC files and for JPEG/PNG/WebP files over 10 MB | HEIC decoding in WebAssembly takes about 1–2 s for 12 MP, and hashing, stripping, and previewing a 50 MB file is I/O-bound. These costs are inherent to FR-008 and FR-009 | Async/background processing would add a job queue and a "processing" state the spec doesn't have. The budget still applies to JPEG/PNG/WebP ≤ 10 MB, and HEIC is tracked as its own metric. The user-facing goal SC-004 (100 photos ≤ 2 min) remains mandatory. **Needs project owner approval** per the constitution |
+| **Measured (T084, 2026-09-25, local run)** | `POST /api/photos` write p95: JPEG/PNG/WebP ≤ 10 MB **358 ms** (within budget); JPEG > 10 MB **331 ms** (within budget, so only HEIC still needs the exception); HEIC 12 MP (1.5 MB) **2,436 ms**. SC-004: 100 photos (50 JPEG ≈ 5.7 MB, 50 HEIC 12 MP), 362 MB total, filed in **62–74 s** at 50 Mbps. Read p95 ≤ 13 ms; large-album worst interaction 56 ms; Lighthouse LCP 1.0–1.2 s on `/` and 1.4–1.9 s on a 1,000-photo album, CLS 0 | Approval: _pending (T089)_ |

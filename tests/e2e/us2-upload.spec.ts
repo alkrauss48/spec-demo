@@ -159,6 +159,7 @@ test.describe('US2: add photos and have them placed into albums by date', () => 
   }) => {
     seed(email, { photos: [{ captureTime: '2026-03-02T12:00:00' }] });
     await page.goto('/');
+    await page.locator('[data-upload-ready]').waitFor({ state: 'attached' }); // content streamed in and hydrated
     await tab(page, browserName);
     await expect(page.getByRole('link', { name: 'Skip to main content' })).toBeFocused();
     await tab(page, browserName);

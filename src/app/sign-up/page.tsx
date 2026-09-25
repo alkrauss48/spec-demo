@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { signUp } from './actions';
+import { SiteHeader } from '@/components/ui/SiteHeader';
 
 export const metadata: Metadata = { title: 'Create an account' };
 
@@ -24,30 +25,33 @@ export default async function SignUpPage({
     problem?.field === field ? problem.message : undefined;
 
   return (
-    <main id="main" className="auth">
-      <h1>Create an account</h1>
-      <form action={signUp} className="form" noValidate>
-        <Field
-          name="email"
-          label="Email"
-          type="email"
-          autoComplete="email"
-          error={errorFor('email')}
-        />
-        <Field
-          name="password"
-          label="Password"
-          type="password"
-          autoComplete="new-password"
-          hint="At least 8 characters."
-          error={errorFor('password')}
-        />
-        <Button type="submit">Create account</Button>
-      </form>
-      <p>
-        Already have an account? <Link href="/sign-in">Sign in</Link>
-      </p>
-    </main>
+    <>
+      <SiteHeader />
+      <main id="main" className="auth">
+        <h1>Create an account</h1>
+        <form action={signUp} className="form" noValidate>
+          <Field
+            name="email"
+            label="Email"
+            type="email"
+            autoComplete="email"
+            error={errorFor('email')}
+          />
+          <Field
+            name="password"
+            label="Password"
+            type="password"
+            autoComplete="new-password"
+            hint="At least 8 characters."
+            error={errorFor('password')}
+          />
+          <Button type="submit">Create account</Button>
+        </form>
+        <p>
+          Already have an account? <Link href="/sign-in">Sign in</Link>
+        </p>
+      </main>
+    </>
   );
 }
 

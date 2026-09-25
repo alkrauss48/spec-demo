@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { SignOutButton } from '@/components/ui/SignOutButton';
+import { SiteHeader } from '@/components/ui/SiteHeader';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { PhotoViewer, viewerLinks } from '@/components/album/PhotoViewer';
@@ -55,11 +57,16 @@ export default async function PhotoPage({ params }: Params) {
     const links = viewerLinks(date, photo);
 
     return (
-      <main id="main" className="page">
-        <VisuallyHidden as="h1">{heading(photo.n, photo.total, date)}</VisuallyHidden>
-        <PhotoViewer photo={photo} links={links} />
-        <ViewerKeys links={links} />
-      </main>
+      <>
+        <SiteHeader>
+          <SignOutButton />
+        </SiteHeader>
+        <main id="main" className="page">
+          <VisuallyHidden as="h1">{heading(photo.n, photo.total, date)}</VisuallyHidden>
+          <PhotoViewer photo={photo} links={links} />
+          <ViewerKeys links={links} />
+        </main>
+      </>
     );
   });
 }

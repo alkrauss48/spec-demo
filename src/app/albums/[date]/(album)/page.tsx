@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { SignOutButton } from '@/components/ui/SignOutButton';
+import { SiteHeader } from '@/components/ui/SiteHeader';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
@@ -41,16 +43,21 @@ export default async function AlbumPage({ params }: Params) {
     });
 
     return (
-      <main id="main" className="page">
-        <Link href="/" className="back-link">
-          ← All photos
-        </Link>
-        <h1>
-          {albumLabel(date)} <span className="usage">· {photoCountLabel(photos.length)}</span>
-        </h1>
-        <PhotoGrid date={date} photos={photos} />
-        <FocusFromHash />
-      </main>
+      <>
+        <SiteHeader>
+          <SignOutButton />
+        </SiteHeader>
+        <main id="main" className="page">
+          <Link href="/" className="back-link">
+            ← All photos
+          </Link>
+          <h1>
+            {albumLabel(date)} <span className="usage">· {photoCountLabel(photos.length)}</span>
+          </h1>
+          <PhotoGrid date={date} photos={photos} />
+          <FocusFromHash />
+        </main>
+      </>
     );
   });
 }

@@ -31,3 +31,8 @@ export async function signIn(formData: FormData): Promise<void> {
   }
   redirect(error ? back(error) : next);
 }
+
+export async function signOut(): Promise<void> {
+  await getAuth().api.signOut({ headers: await headers() });
+  redirect('/sign-in');
+}

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { signIn } from './actions';
+import { SiteHeader } from '@/components/ui/SiteHeader';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
@@ -23,30 +24,33 @@ export default async function SignInPage({
     problem?.field === field ? problem.message : undefined;
 
   return (
-    <main id="main" className="auth">
-      <h1>Sign in</h1>
-      <form action={signIn} className="form" noValidate>
-        <input type="hidden" name="next" value={next ?? '/'} />
-        <Field
-          name="email"
-          label="Email"
-          type="email"
-          autoComplete="email"
-          error={errorFor('email')}
-        />
-        <Field
-          name="password"
-          label="Password"
-          type="password"
-          autoComplete="current-password"
-          error={errorFor('password')}
-        />
-        <Button type="submit">Sign in</Button>
-      </form>
-      <p>
-        New here? <Link href="/sign-up">Create an account</Link>
-      </p>
-    </main>
+    <>
+      <SiteHeader />
+      <main id="main" className="auth">
+        <h1>Sign in</h1>
+        <form action={signIn} className="form" noValidate>
+          <input type="hidden" name="next" value={next ?? '/'} />
+          <Field
+            name="email"
+            label="Email"
+            type="email"
+            autoComplete="email"
+            error={errorFor('email')}
+          />
+          <Field
+            name="password"
+            label="Password"
+            type="password"
+            autoComplete="current-password"
+            error={errorFor('password')}
+          />
+          <Button type="submit">Sign in</Button>
+        </form>
+        <p>
+          New here? <Link href="/sign-up">Create an account</Link>
+        </p>
+      </main>
+    </>
   );
 }
 

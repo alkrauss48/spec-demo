@@ -1,0 +1,77 @@
+# Constitution "Development Workflow & Quality Gates" 1–6 on every pull request.
+# Gate 7 (review) is the pull request approval itself.
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABASE_PATH: ${{ github.workspace }}/data/ci.db
+      MEDIA_ROOT: ${{ github.workspace }}/data/media
+      BETTER_AUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history for the secret scan
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Generate a throwaway auth secret
+        run: echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
+      - run: npm ci
+
+      # Gate 1: lint and format
+      - run: npm run lint
+
+      # Gate 2: type check
+      - run: npm run typecheck
+
+      # Gate 3: unit and integration tests
+      - run: npm test
+
+      # Gates 3 and 4: end-to-end, keyboard, and axe checks (the Playwright web server builds once)
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
+      - name: No personal data in server logs
+        run: npm run test:log-privacy
+
+      # Gate 5: security. Only production dependencies ship; dev-only tooling (Lighthouse CI,
+      # puppeteer) is audited separately and reported, not blocking.
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --audit-level=high || echo "::warning::dev-only dependencies have audit findings"
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Gate 6: performance budgets
+      - run: npm run build
+      - run: npm run perf:bundle
+      - name: Upload, large-album INP, and read-latency checks
+        run: npm run perf:upload
+      - name: Seed the Lighthouse users
+        run: |
+          npm run db:migrate
+          npm run seed -- --user perf@example.test --photos 1000 --albums 100
+          npm run seed -- --user perf-large@example.test --photos 1000 --albums 1 --start 2026-03-14
+      - run: npm run perf:lighthouse
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-results/
+            playwright-report/
+            .lighthouseci/
+          retention-days: 7

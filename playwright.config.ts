@@ -20,7 +20,9 @@ const start = (server: typeof MAIN | typeof FAILING, build: boolean) => {
 
 export default defineConfig({
   testDir: 'tests',
-  testMatch: ['e2e/**/*.spec.ts', 'perf/**/*.spec.ts'],
+  // The perf specs (tests/perf) are slow and load the machine, so they run only via
+  // `npm run perf:upload`, which sets PERF=1.
+  testMatch: process.env.PERF ? ['perf/**/*.spec.ts'] : ['e2e/**/*.spec.ts'],
   outputDir: 'test-results/playwright',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

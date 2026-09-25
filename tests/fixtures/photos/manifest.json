@@ -116,6 +116,14 @@
     "width": 256,
     "height": 192
   },
+  "perf-12mp.heic": {
+    "capture_date": "2026-04-02",
+    "capture_time": "2026-04-02T09:30:00",
+    "date_source": "exif",
+    "format": "heic",
+    "width": 4032,
+    "height": 3024
+  },
   "2026-01-21-rotated.heic": {
     "capture_date": "2026-01-21",
     "capture_time": "2026-01-21T08:30:00",

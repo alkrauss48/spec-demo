@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { SignOutButton } from '@/components/ui/SignOutButton';
+import { SiteHeader } from '@/components/ui/SiteHeader';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { DateGroup } from '@/components/library/DateGroup';
@@ -34,26 +36,31 @@ export default async function LibraryPage() {
     });
 
     return (
-      <main id="main" className="page">
-        <div className="library-header">
-          <div>
-            <h1>Your photos</h1>
-            <p className="usage" data-limit-reached={photoCount >= PHOTO_LIMIT}>
-              {usageLabel(photoCount)}
-            </p>
+      <>
+        <SiteHeader>
+          <SignOutButton />
+        </SiteHeader>
+        <main id="main" className="page">
+          <div className="library-header">
+            <div>
+              <h1>Your photos</h1>
+              <p className="usage" data-limit-reached={photoCount >= PHOTO_LIMIT}>
+                {usageLabel(photoCount)}
+              </p>
+            </div>
+            <UploadPanel />
           </div>
-          <UploadPanel />
-        </div>
-        {photoCount === 0 ? (
-          <EmptyState heading="No photos yet" action={<AddPhotosButton />}>
-            Add photos from your device. Each one is placed in an album for the day it was taken.
-          </EmptyState>
-        ) : (
-          groups.map((group, i) => (
-            <DateGroup key={group.yearMonth} group={group} eager={i === 0} />
-          ))
-        )}
-      </main>
+          {photoCount === 0 ? (
+            <EmptyState heading="No photos yet" action={<AddPhotosButton />}>
+              Add photos from your device. Each one is placed in an album for the day it was taken.
+            </EmptyState>
+          ) : (
+            groups.map((group, i) => (
+              <DateGroup key={group.yearMonth} group={group} eager={i === 0} />
+            ))
+          )}
+        </main>
+      </>
     );
   });
 }

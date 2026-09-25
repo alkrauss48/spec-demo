@@ -10,11 +10,14 @@ export function photoAlt(photo: AlbumPhoto, when: string): string {
     : `${position}, taken ${when}`;
 }
 
+/** Enough to fill the first screen on a phone or a desktop, so the LCP image isn't lazy. */
+const EAGER_THUMBS = 8;
+
 /** An album's thumbnails in capture order; each links to the viewer (FR-012, FR-017). */
 export function PhotoGrid({ date, photos }: { date: string; photos: AlbumPhoto[] }) {
   return (
     <ul className={styles.grid}>
-      {photos.map((photo) => (
+      {photos.map((photo, i) => (
         <li key={photo.id} className={styles.item}>
           <a
             id={`photo-${photo.id}`}
@@ -26,7 +29,7 @@ export function PhotoGrid({ date, photos }: { date: string; photos: AlbumPhoto[]
               alt={photoAlt(photo, timeLabel(photo.captureTime))}
               width={400}
               height={400}
-              loading="lazy"
+              loading={i < EAGER_THUMBS ? 'eager' : 'lazy'}
               className={styles.image}
             />
             {photo.dateSource === 'upload' && (

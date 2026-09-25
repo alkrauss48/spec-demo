@@ -83,6 +83,7 @@ test.describe('US1: browse albums as date-grouped tiles', () => {
   }) => {
     seed(email, { photos: LIBRARY });
     await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Your photos', level: 1 })).toBeVisible();
     await tab(page, browserName);
     await expect(page.getByRole('link', { name: 'Skip to main content' })).toBeFocused();
 

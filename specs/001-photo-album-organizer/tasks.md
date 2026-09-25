@@ -49,6 +49,52 @@ breaking down the tasks, so their reasons are recorded here for a reviewer (Prin
 - `scripts/` checks, `tests/perf/`, `lighthouserc.json`, and `.github/workflows/ci.yml`: the
   performance, privacy, and CI gates the constitution requires.
 
+
+## Implementation notes (added during /speckit-implement)
+
+Deviations from the tasks as written, each for a reason found while building (Principle I:
+the plan's source tree and Complexity Tracking were updated to match):
+
+- **Route groups and ownership layouts** (T047, T073, T077): the library page and loading
+  state live in `src/app/(library)/`, the album page in `albums/[date]/(album)/`, and the
+  album and photo ownership checks run in `albums/[date]/layout.tsx` and
+  `photos/[photoId]/layout.tsx`. Under a `loading.tsx` boundary, `notFound()` streams with
+  HTTP 200; checking before the boundary gives real 404s (V13).
+- **Header out of the root layout** (T018, T025): `SiteHeader` and `SignOutButton` are
+  rendered by each page. A session lookup in the root layout could be left unresolved during
+  `router.refresh()`, so the refreshed library never committed.
+- **Reload after uploads** (T065): when photos were added, `UploadPanel` saves the summary to
+  `sessionStorage` and reloads, instead of calling `router.refresh()`. A refresh that updates
+  content inside the library's streamed loading boundary sometimes never commits in
+  Next 15.5 (its bundled React 19.2 canary): identical RSC payloads commit or stall
+  depending on how the chunks arrive. This was reproducible on WebKit and under load.
+- **`/api/photos` skips middleware** (T015, T064): when middleware runs, Next.js buffers the
+  request body for it and truncates past 10 MB. The route sets its own request ID.
+- **Better Auth on its own connection, transactions off** (T013): see plan.md Complexity
+  Tracking (`kysely`).
+- **Blocking metadata** (`htmlLimitedBots: /.*/` in next.config.ts): `<title>` is in the
+  initial HTML instead of streamed afterwards, which axe checks (SC-006).
+- **WebP capture dates** (T058): exifr can't parse the WebP container, so the `EXIF`
+  chunk's TIFF payload is extracted (`webpExif` in strip-metadata.ts) and passed to exifr.
+- **Orientation**: only JPEG keeps an Orientation tag (R6), so only JPEG display sizes are
+  swapped for orientation 5–8. PNG/WebP files with a non-default EXIF orientation are
+  stored as-is (rare for camera output).
+- **Grid columns** (T046, T071): `minmax(min(9.5rem, calc(50% - gap)), 1fr)`. At 320 px
+  the content box is 288 px, where two 9.5 rem columns don't fit.
+- **Test hooks** (T049): besides `E2E_FAIL_DB`, the E2E servers honor an `x-e2e-delay-ms`
+  request header (≤ 10 s) so loading states can be observed. Both need
+  `E2E_TEST_HOOKS=1`, which only the Playwright servers set. Better Auth's rate limit is also
+  off on those servers, because every parallel test signs up from 127.0.0.1.
+- **Ports** (T005): the Playwright servers use 3100 and 3101, so a dev server on 3000 doesn't
+  collide. Perf specs run only with `PERF=1` (`npm run perf:upload`), so `test:e2e` stays fast.
+- **Sign-in and sign-up** (T016, T017): Server Actions redirect back with an error code, so
+  those pages ship no page-specific client JS.
+- **Audit gate** (T086): `npm audit --omit=dev --audit-level=high` blocks. The full audit
+  still reports `extract-zip` via Lighthouse CI and puppeteer (dev-only, no fixed version),
+  as a CI warning.
+- **Fixtures**: `perf-12mp.heic` (4032×3024, about 1.5 MB, made with macOS `sips`) was added
+  for T084, since the reference HEIC is too small to represent camera photos.
+
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
@@ -243,16 +289,16 @@ on that photo (V10, V11 album/photo, V12 album, V13 album route).
 
 **Purpose**: Performance budgets, privacy verification, CI gates, and documentation
 
-- [ ] T080 [P] Add a cross-route accessibility sweep in tests/e2e/a11y.spec.ts that runs `expectNoA11yViolations` on `/sign-in`, `/sign-up`, `/` (empty, populated, error), an album, a photo, and the 404 page, in both Chromium and WebKit (SC-006, Principle III)
-- [ ] T081 [P] Implement the log privacy check in scripts/check-log-privacy.ts: read `test-results/server.log` (from T005), fail if any line isn't JSON with `level`/`ts`/`requestId`, or if any line contains a fixture file name, a manifest EXIF value (GPS coordinates, serial number, artist, comment), a `YYYY-MM-DD` capture date from the manifest, an `@` email address, or a session token (FR-015, R16, quickstart "Observability check")
-- [ ] T082 [P] Configure Lighthouse CI in lighthouserc.json: mobile preset (Moto G Power, simulated 4G), a `puppeteerScript` that clears cookies and signs in the seed user for the URL being audited: `perf@example.test` for `/` (100 albums) and `perf-large@example.test` for `/albums/2026-03-14` (1,000 photos), both seeded with T042 as in quickstart.md, and assertions `largest-contentful-paint ≤ 2500`, `cumulative-layout-shift ≤ 0.1` (SC-002, constitution budgets; INP is covered by T085, since Lighthouse navigation runs don't measure INP); plus a helper in `scripts/lighthouse-auth.cjs` for the sign-in script
-- [ ] T083 [P] Implement the bundle budget check in scripts/check-bundle.ts: after `next build`, sum the gzip size of each route's initial JS chunks from `.next/app-build-manifest.json` and fail if any route exceeds 200 KB compressed (constitution budget)
-- [ ] T084 [P] Write the upload performance test in tests/perf/upload.spec.ts: throttle to 50 Mbps via CDP `Network.emulateNetworkConditions`, upload 100 mixed JPEG/HEIC fixtures (copies with unique bytes) in one action, and assert every photo appears in its album within 120 s (SC-004); then, not counted toward the 120 s, upload a second batch of 20 files (10 PNG/WebP ≤ 10 MB, and 10 JPEG/PNG/WebP between 10 and 50 MB); from `test-results/server.log`, record the p95 `duration_ms` of `photo.upload.accepted` for JPEG/PNG/WebP ≤ 10 MB (assert ≤ 500 ms), and separately for JPEG/PNG/WebP > 10 MB and for HEIC (plan.md budget exception, feeds T089)
-- [ ] T085 [P] Add an INP check for large albums in tests/perf/large-album.spec.ts: seed 1,000 photos on one day, open the album, scroll to the bottom with `page.mouse.wheel`, and measure interaction latency with a `PerformanceObserver` for `event` entries, asserting ≤ 200 ms (edge case "Large album", R12)
-- [ ] T091 [P] Write the read-latency test in tests/perf/read-latency.spec.ts: using the `perf@example.test` seed user (T042), request `/`, one album page, 200 `thumb` URLs, and 50 `full` URLs; compute p95 in `test-results/server.log` from `duration_ms` on the `library.render` and `album.render` events, from `media.served.duration_ms` for `full` (time until headers are sent), and from `media.completed.total_ms` for `thumb` (total response time) and assert ≤ 300 ms (constitution "API response time", plan.md Constraints)
-- [ ] T086 Create the CI workflow in .github/workflows/ci.yml running, on pull requests, `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npx playwright install --with-deps chromium webkit`, `npm run test:e2e`, `npm run test:log-privacy`, `npm audit --audit-level=high`, a secret scan with `gitleaks/gitleaks-action`, `npm run build`, `npm run perf:bundle`, `npm run perf:upload` (runs `tests/perf`: T084, T085, T091), and `npm run perf:lighthouse` (constitution "Development Workflow & Quality Gates" 1–6)
-- [ ] T087 [P] Write README.md at the repo root: what the app does, prerequisites, setup and env vars (mirroring quickstart.md), the quality-gate commands, and the privacy guarantees (metadata stripping, per-user 404s, no personal data in logs) (Quality Gate 7, Principle IV)
-- [ ] T088 Review every `src/server/**` query for a `user_id = ?` filter and every SQL string for parameter placeholders (no string interpolation), confirm no `dangerouslySetInnerHTML` and no secrets exist anywhere in `src/`, and fix any gaps (Principle IV, FR-014)
+- [X] T080 [P] Add a cross-route accessibility sweep in tests/e2e/a11y.spec.ts that runs `expectNoA11yViolations` on `/sign-in`, `/sign-up`, `/` (empty, populated, error), an album, a photo, and the 404 page, in both Chromium and WebKit (SC-006, Principle III)
+- [X] T081 [P] Implement the log privacy check in scripts/check-log-privacy.ts: read `test-results/server.log` (from T005), fail if any line isn't JSON with `level`/`ts`/`requestId`, or if any line contains a fixture file name, a manifest EXIF value (GPS coordinates, serial number, artist, comment), a `YYYY-MM-DD` capture date from the manifest, an `@` email address, or a session token (FR-015, R16, quickstart "Observability check")
+- [X] T082 [P] Configure Lighthouse CI in lighthouserc.json: mobile preset (Moto G Power, simulated 4G), a `puppeteerScript` that clears cookies and signs in the seed user for the URL being audited: `perf@example.test` for `/` (100 albums) and `perf-large@example.test` for `/albums/2026-03-14` (1,000 photos), both seeded with T042 as in quickstart.md, and assertions `largest-contentful-paint ≤ 2500`, `cumulative-layout-shift ≤ 0.1` (SC-002, constitution budgets; INP is covered by T085, since Lighthouse navigation runs don't measure INP); plus a helper in `scripts/lighthouse-auth.cjs` for the sign-in script
+- [X] T083 [P] Implement the bundle budget check in scripts/check-bundle.ts: after `next build`, sum the gzip size of each route's initial JS chunks from `.next/app-build-manifest.json` and fail if any route exceeds 200 KB compressed (constitution budget)
+- [X] T084 [P] Write the upload performance test in tests/perf/upload.spec.ts: throttle to 50 Mbps via CDP `Network.emulateNetworkConditions`, upload 100 mixed JPEG/HEIC fixtures (copies with unique bytes) in one action, and assert every photo appears in its album within 120 s (SC-004); then, not counted toward the 120 s, upload a second batch of 20 files (10 PNG/WebP ≤ 10 MB, and 10 JPEG/PNG/WebP between 10 and 50 MB); from `test-results/server.log`, record the p95 `duration_ms` of `photo.upload.accepted` for JPEG/PNG/WebP ≤ 10 MB (assert ≤ 500 ms), and separately for JPEG/PNG/WebP > 10 MB and for HEIC (plan.md budget exception, feeds T089)
+- [X] T085 [P] Add an INP check for large albums in tests/perf/large-album.spec.ts: seed 1,000 photos on one day, open the album, scroll to the bottom with `page.mouse.wheel`, and measure interaction latency with a `PerformanceObserver` for `event` entries, asserting ≤ 200 ms (edge case "Large album", R12)
+- [X] T091 [P] Write the read-latency test in tests/perf/read-latency.spec.ts: using the `perf@example.test` seed user (T042), request `/`, one album page, 200 `thumb` URLs, and 50 `full` URLs; compute p95 in `test-results/server.log` from `duration_ms` on the `library.render` and `album.render` events, from `media.served.duration_ms` for `full` (time until headers are sent), and from `media.completed.total_ms` for `thumb` (total response time) and assert ≤ 300 ms (constitution "API response time", plan.md Constraints)
+- [X] T086 Create the CI workflow in .github/workflows/ci.yml running, on pull requests, `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npx playwright install --with-deps chromium webkit`, `npm run test:e2e`, `npm run test:log-privacy`, `npm audit --audit-level=high`, a secret scan with `gitleaks/gitleaks-action`, `npm run build`, `npm run perf:bundle`, `npm run perf:upload` (runs `tests/perf`: T084, T085, T091), and `npm run perf:lighthouse` (constitution "Development Workflow & Quality Gates" 1–6)
+- [X] T087 [P] Write README.md at the repo root: what the app does, prerequisites, setup and env vars (mirroring quickstart.md), the quality-gate commands, and the privacy guarantees (metadata stripping, per-user 404s, no personal data in logs) (Quality Gate 7, Principle IV)
+- [X] T088 Review every `src/server/**` query for a `user_id = ?` filter and every SQL string for parameter placeholders (no string interpolation), confirm no `dangerouslySetInnerHTML` and no secrets exist anywhere in `src/`, and fix any gaps (Principle IV, FR-014)
 - [ ] T089 **Merge blocker.** Record the project owner's decision on the `POST /api/photos` HEIC/large-file write-p95 budget exception (approver and date) in the Complexity Tracking table in specs/001-photo-album-organizer/plan.md, using the measurements from T084 (constitution "Performance Budgets")
 - [ ] T090 Run the full quickstart.md validation: setup, all five quality gates, scenarios V1–V15 by hand, the performance checks, and the observability check; record any failure as a new task in this file before merging (Quality Gates 1–7, V1–V15)
 

@@ -34,9 +34,10 @@ export async function signUp(page: Page): Promise<string> {
   }
 }
 
-/** WebKit on macOS only Tabs to links with Option held (Safari's default setting). */
+/** WebKit on macOS only Tabs to links with Option held (Safari's default setting); elsewhere Tab does. */
 export async function tab(page: Page, browserName: string) {
-  await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
+  const optionTab = browserName === 'webkit' && process.platform === 'darwin';
+  await page.keyboard.press(optionTab ? 'Alt+Tab' : 'Tab');
 }
 
 /**

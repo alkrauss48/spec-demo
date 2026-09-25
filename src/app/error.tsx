@@ -5,6 +5,7 @@ import { useEffect, useTransition } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { reportClientError, routePattern } from '@/components/ui/ErrorReporter';
+import { SiteHeader } from '@/components/ui/SiteHeader';
 
 export default function GlobalError({
   error,
@@ -27,25 +28,28 @@ export default function GlobalError({
   }, [error, pathname]);
 
   return (
-    <main id="main" className="page">
-      <ErrorState
-        heading="We couldn't load your photos."
-        message="Something went wrong on our side. Please try again."
-        reference={error.digest}
-        action={
-          <Button
-            disabled={pending}
-            onClick={() =>
-              startTransition(() => {
-                reset();
-                router.refresh();
-              })
-            }
-          >
-            Try again
-          </Button>
-        }
-      />
-    </main>
+    <>
+      <SiteHeader />
+      <main id="main" className="page">
+        <ErrorState
+          heading="We couldn't load your photos."
+          message="Something went wrong on our side. Please try again."
+          reference={error.digest}
+          action={
+            <Button
+              disabled={pending}
+              onClick={() =>
+                startTransition(() => {
+                  reset();
+                  router.refresh();
+                })
+              }
+            >
+              Try again
+            </Button>
+          }
+        />
+      </main>
+    </>
   );
 }

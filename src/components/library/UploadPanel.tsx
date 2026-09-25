@@ -12,6 +12,7 @@ const INPUT_ID = 'add-photos-input';
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif';
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
 const CONCURRENCY = 3;
+const SUMMARY_KEY = 'upload-summary';
 
 type Outcome =
   | { kind: 'added' }
@@ -72,7 +73,21 @@ export function UploadPanel() {
   const [run, setRun] = useState<Run | null>(null);
   const busy = run !== null && !run.finished;
   const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []); // hydrated: the picker's handlers are attached
+
+  useEffect(() => {
+    // Show the summary saved just before the post-upload reload (see onFiles).
+    try {
+      const saved = sessionStorage.getItem(SUMMARY_KEY);
+      if (saved) {
+        sessionStorage.removeItem(SUMMARY_KEY);
+        const outcomes = JSON.parse(saved) as Outcome[];
+        setRun({ total: outcomes.length, done: outcomes.length, outcomes, finished: true });
+      }
+    } catch {
+      // No storage (e.g. blocked): the summary was shown before refreshing instead.
+    }
+    setReady(true); // hydrated: the picker's handlers are attached
+  }, []);
 
   async function onFiles(list: FileList | null) {
     const files = Array.from(list ?? []);
@@ -105,8 +120,19 @@ export function UploadPanel() {
       }
     };
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
+    if (outcomes.some((o) => o.kind === 'added')) {
+      // Reload rather than router.refresh(): a refresh that updates the library inside its
+      // streamed loading.tsx boundary sometimes never commits (Next 15.5 / React 19.2 canary),
+      // leaving the new albums unshown. The summary survives the reload in sessionStorage.
+      try {
+        sessionStorage.setItem(SUMMARY_KEY, JSON.stringify(outcomes));
+        location.reload();
+        return;
+      } catch {
+        router.refresh();
+      }
+    }
     setRun({ total: files.length, done, outcomes, finished: true });
-    router.refresh();
   }
 
   const added = run?.outcomes.filter((o) => o.kind === 'added').length ?? 0;

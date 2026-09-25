@@ -8,7 +8,7 @@
  * create it with `ensureTooBig()`.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { crc32 } from 'node:zlib';
@@ -230,6 +230,15 @@ export const MANIFEST: Record<string, FixtureEntry> = {
     width: 256,
     height: 192,
   },
+  // A camera-sized (4032×3024, about 1.5 MB) HEIC for the upload performance test (T084).
+  'perf-12mp.heic': {
+    capture_date: '2026-04-02',
+    capture_time: '2026-04-02T09:30:00',
+    date_source: 'exif',
+    format: 'heic',
+    width: 4032,
+    height: 3024,
+  },
   // irot + EXIF Orientation 6 on a 120×80 image: displayed 80×120 (portrait).
   '2026-01-21-rotated.heic': {
     capture_date: '2026-01-21',
@@ -248,7 +257,10 @@ export async function ensureTooBig(): Promise<string> {
   const path = fixturePath('too-big-51mb.jpg');
   if (!existsSync(path)) {
     const jpeg = await jpegWithDate('2026:03:14 08:00:00', { r: 10, g: 10, b: 10 });
-    writeFileSync(path, Buffer.concat([jpeg, Buffer.alloc(TOO_BIG_BYTES - jpeg.length)]));
+    // Written to a temp name and renamed, so a parallel test never reads a half-written file.
+    const tmp = `${path}.${process.pid}.${Date.now()}.tmp`;
+    writeFileSync(tmp, Buffer.concat([jpeg, Buffer.alloc(TOO_BIG_BYTES - jpeg.length)]));
+    renameSync(tmp, path);
   }
   return path;
 }
@@ -387,7 +399,7 @@ async function generateHeic() {
     // Not macOS.
   }
   if (!hasSips) {
-    for (const name of ['2026-01-20.heic', '2026-01-21-rotated.heic']) {
+    for (const name of ['2026-01-20.heic', '2026-01-21-rotated.heic', 'perf-12mp.heic']) {
       if (!existsSync(fixturePath(name)))
         throw new Error(`${name} is missing and sips isn't available`);
     }
@@ -436,6 +448,44 @@ async function generateHeic() {
       .toBuffer(),
   );
   sips('2026-01-21-rotated.heic');
+
+  // Camera-sized, with a little noise so it compresses like a real photo (about 1.5 MB).
+  const pw = 4032;
+  const ph = 3024;
+  const big = Buffer.alloc(pw * ph * 3);
+  for (let y = 0; y < ph; y++) {
+    for (let x = 0; x < pw; x++) {
+      const i = (y * pw + x) * 3;
+      const noise = (Math.random() * 8) | 0;
+      big[i] = ((x / pw) * 200 + noise) | 0;
+      big[i + 1] = ((y / ph) * 200 + noise) | 0;
+      big[i + 2] = (((x + y) / (pw + ph)) * 255) | 0;
+    }
+  }
+  writeFileSync(
+    tmp,
+    await sharp(big, { raw: { width: pw, height: ph, channels: 3 } })
+      .jpeg({ quality: 95 })
+      .withExif({ IFD2: { DateTimeOriginal: '2026:04:02 09:30:00' } })
+      .toBuffer(),
+  );
+  execFileSync(
+    'sips',
+    [
+      '-s',
+      'format',
+      'heic',
+      '-s',
+      'formatOptions',
+      '70',
+      tmp,
+      '--out',
+      fixturePath('perf-12mp.heic'),
+    ],
+    {
+      stdio: 'ignore',
+    },
+  );
   execFileSync('rm', ['-f', tmp]);
 }
 

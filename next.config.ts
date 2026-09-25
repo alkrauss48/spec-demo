@@ -17,10 +17,9 @@ const csp = [
 const nextConfig: NextConfig = {
   serverExternalPackages: ['better-sqlite3', 'sharp', 'heic-decode', 'libheif-js'],
   poweredByHeader: false,
-  // Next's built-in gzip stalled streamed RSC responses under concurrent load (seen with
-  // Next 15.5 on Node 26): router.refresh() after an upload never finished rendering.
-  // Compress at the reverse proxy instead.
-  compress: false,
+  // Send <title> and other metadata in the initial HTML for every user agent, not streamed in
+  // afterwards: every page needs its title from the first paint (WCAG 2.4.2, ui-routes.md).
+  htmlLimitedBots: /.*/,
   async headers() {
     return [
       {
