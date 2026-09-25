@@ -26,6 +26,10 @@ jobs:
           node-version: 22
           cache: npm
 
+      # Match the local npm major so lockfile resolution agrees (npm 10 and 11
+      # treat optional peers differently)
+      - run: npm i -g npm@11
+
       - name: Generate a throwaway auth secret
         run: echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
 
