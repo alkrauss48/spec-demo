@@ -95,3 +95,57 @@ export function getUsage(userId: string): { photoCount: number; photoLimit: numb
     .get(userId) as number;
   return { photoCount, photoLimit: PHOTO_LIMIT };
 }
+
+// --- Album and viewer (US3) -----------------------------------------------------------
+
+export type AlbumPhoto = {
+  id: string;
+  width: number;
+  height: number;
+  captureTime: string;
+  dateSource: 'exif' | 'upload';
+  addedAt: string;
+  n: number;
+  total: number;
+};
+
+export type ViewerPhoto = AlbumPhoto & { prevId: string | null; nextId: string | null };
+
+const ALBUM_ROWS = `
+  SELECT id, width, height, capture_time AS captureTime, date_source AS dateSource, added_at AS addedAt,
+         ROW_NUMBER() OVER w AS n,
+         COUNT(*) OVER () AS total,
+         LAG(id) OVER w AS prevId,
+         LEAD(id) OVER w AS nextId
+    FROM photo
+   WHERE user_id = ? AND capture_date = ?
+  WINDOW w AS (ORDER BY capture_time, added_at, id)`;
+
+/** One user's photos for one day, oldest first (FR-012). Empty for anyone else's day. */
+export function getAlbumPhotos(userId: string, date: string): AlbumPhoto[] {
+  maybeFailForTest();
+  const rows = getDb().prepare(`${ALBUM_ROWS} ORDER BY n`).all(userId, date) as ViewerPhoto[];
+  return rows.map((row) => {
+    const photo: AlbumPhoto & Partial<Pick<ViewerPhoto, 'prevId' | 'nextId'>> = { ...row };
+    delete photo.prevId;
+    delete photo.nextId;
+    return photo;
+  });
+}
+
+/** A photo in this user's album for `date`, with its neighbors; null if it isn't there (FR-014). */
+export function getPhotoInAlbum(userId: string, date: string, photoId: string): ViewerPhoto | null {
+  maybeFailForTest();
+  const row = getDb()
+    .prepare(`SELECT * FROM (${ALBUM_ROWS}) WHERE id = ?`)
+    .get(userId, date, photoId) as ViewerPhoto | undefined;
+  return row ?? null;
+}
+
+/** Whether this user has an album (at least one photo) for `date`. */
+export function albumExists(userId: string, date: string): boolean {
+  maybeFailForTest();
+  return !!getDb()
+    .prepare('SELECT 1 FROM photo WHERE user_id = ? AND capture_date = ? LIMIT 1')
+    .get(userId, date);
+}

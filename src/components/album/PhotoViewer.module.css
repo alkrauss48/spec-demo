@@ -1,0 +1,36 @@
+.viewer {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+}
+
+/* A box with the photo's own aspect ratio, as large as fits, so nothing shifts as it loads. */
+.frame {
+  width: min(100%, calc((100dvh - 12rem) * var(--ratio)));
+  max-width: 100vw;
+  aspect-ratio: var(--ratio);
+  background: var(--color-surface);
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.caption {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+}
