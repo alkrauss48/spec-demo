@@ -1,0 +1,236 @@
+openapi: 3.1.0
+info:
+  title: Photo Album Organizer — HTTP API
+  version: 1.0.0
+  description: |
+    HTTP endpoints for feature 001-photo-album-organizer. Pages (library, album, and photo)
+    are rendered on the server and read the database directly, so they are defined in
+    ui-routes.md, not here. Authentication endpoints under /api/auth/* are provided by
+    Better Auth and are not redefined here.
+
+    Rules for every endpoint:
+      - A valid session cookie is required. Without one, the response is 401.
+      - Resources are scoped to the session user. Another user's photo returns 404, never
+        403 (FR-014).
+      - Every response carries an `x-request-id` header.
+      - Error bodies use the Error schema. `message` is safe to show to the user and never
+        contains internals.
+servers:
+  - url: /
+security:
+  - sessionCookie: []
+
+paths:
+  /api/photos:
+    post:
+      operationId: uploadPhoto
+      summary: Upload a single photo and file it into the album for its date
+      description: |
+        Send one file per request. The client sends at most 3 requests at a time and
+        combines the results into the completion summary (FR-007). The server checks the
+        size limit while streaming, detects the format from magic bytes, reads the capture
+        date, removes metadata, generates the preview, and inserts the photo in a
+        transaction that checks for duplicates and the 1,000-photo limit.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The photo file. At most 50 MB. JPEG, PNG, WebP, or HEIC/HEIF.
+                timezone:
+                  type: string
+                  description: |
+                    The uploader's IANA time zone (e.g. "America/Chicago"). Used only for
+                    the fallback date and the future-date check. Invalid or missing → UTC.
+                  example: America/Chicago
+      responses:
+        '201':
+          description: Photo stored.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadResult' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403':
+          description: Origin header missing or not the app's origin.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: FORBIDDEN_ORIGIN, message: "This request was blocked.", fileName: null }
+        '409':
+          description: Duplicate of a photo already in the library, or the library is full.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                duplicate:
+                  value: { code: DUPLICATE, message: "IMG_2041.jpg is already in your library, so it was skipped.", fileName: IMG_2041.jpg }
+                full:
+                  value: { code: LIBRARY_LIMIT_REACHED, message: "IMG_2041.jpg wasn't added because your library has reached its limit of 1,000 photos.", fileName: IMG_2041.jpg }
+        '413':
+          description: File larger than 50 MB.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: FILE_TOO_LARGE, message: "pano.jpg is larger than the 50 MB limit.", fileName: pano.jpg }
+        '415':
+          description: Not a supported photo format.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: UNSUPPORTED_TYPE, message: "notes.pdf isn't a supported photo. Use JPEG, PNG, HEIC, or WebP.", fileName: notes.pdf }
+        '422':
+          description: The format was recognized but the image could not be decoded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: UNREADABLE_IMAGE, message: "broken.jpg couldn't be read as a photo.", fileName: broken.jpg }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /media/photos/{photoId}/{variant}:
+    get:
+      operationId: getPhotoMedia
+      summary: Serve a photo's preview or full-resolution file to its owner
+      parameters:
+        - name: photoId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z0-9_-]{22}$' }
+        - name: variant
+          in: path
+          required: true
+          schema: { type: string, enum: [thumb, full] }
+      responses:
+        '200':
+          description: |
+            Image bytes. `thumb` is always image/webp. `full` is image/jpeg, image/png, or
+            image/webp. Headers: `Cache-Control: private, max-age=31536000, immutable`,
+            `X-Content-Type-Options: nosniff`, `Content-Disposition: inline`.
+          content:
+            image/webp: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/client-errors:
+    post:
+      operationId: reportClientError
+      summary: Report a browser-side error for structured logging (Principle V)
+      description: |
+        The server truncates every field, removes query strings from URLs, and never logs
+        anything beyond these fields. Accepted at most 20 times per session per minute;
+        extra reports are dropped silently with a 204.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message, route]
+              additionalProperties: false
+              properties:
+                message: { type: string, maxLength: 500 }
+                route: { type: string, maxLength: 200, description: "Route pattern, e.g. /albums/[date]" }
+                stack: { type: string, maxLength: 4000 }
+                requestId: { type: string, maxLength: 64 }
+      responses:
+        '204': { description: Accepted. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+
+  schemas:
+    UploadResult:
+      type: object
+      required: [photo, album, usage]
+      properties:
+        photo: { $ref: '#/components/schemas/Photo' }
+        album:
+          type: object
+          required: [date, label, photoCount, created]
+          properties:
+            date: { type: string, format: date, example: '2026-03-14' }
+            label: { type: string, example: 'Mar 14, 2026' }
+            photoCount: { type: integer, minimum: 1 }
+            created: { type: boolean, description: True if this photo started a new album. }
+        usage: { $ref: '#/components/schemas/Usage' }
+
+    Photo:
+      type: object
+      required: [id, originalFilename, captureDate, captureTime, dateSource, width, height]
+      properties:
+        id: { type: string, example: 'q3N8x0l2TtS1aVbC9dEf4g' }
+        originalFilename: { type: string, example: IMG_2041.jpg }
+        captureDate: { type: string, format: date, example: '2026-03-14' }
+        captureTime: { type: string, pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$', example: '2026-03-14T23:30:05' }
+        dateSource:
+          type: string
+          enum: [exif, upload]
+          description: "`upload` means no valid capture date was recorded (FR-006)."
+        width: { type: integer, minimum: 1 }
+        height: { type: integer, minimum: 1 }
+
+    Usage:
+      type: object
+      required: [photoCount, photoLimit]
+      properties:
+        photoCount: { type: integer, minimum: 0, maximum: 1000 }
+        photoLimit: { type: integer, const: 1000 }
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - UNAUTHENTICATED
+            - FORBIDDEN_ORIGIN
+            - NOT_FOUND
+            - BAD_REQUEST
+            - FILE_TOO_LARGE
+            - UNSUPPORTED_TYPE
+            - UNREADABLE_IMAGE
+            - DUPLICATE
+            - LIBRARY_LIMIT_REACHED
+            - INTERNAL
+        message: { type: string, description: A message safe to show the user. Names the file when relevant (FR-008). }
+        fileName: { type: [string, 'null'] }
+        requestId: { type: string, description: Included on INTERNAL errors for support. }
+
+  responses:
+    Unauthenticated:
+      description: No valid session.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { code: UNAUTHENTICATED, message: "Please sign in again." }
+    NotFound:
+      description: Does not exist or is not owned by the session user (these cannot be told apart).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { code: NOT_FOUND, message: "That photo couldn't be found." }
+    BadRequest:
+      description: The request body failed validation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Unexpected failure. Nothing was stored.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { code: INTERNAL, message: "Something went wrong adding this photo. Please try again.", requestId: "01J…" }
