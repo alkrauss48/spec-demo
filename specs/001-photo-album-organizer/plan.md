@@ -162,8 +162,8 @@ handlers), which keeps the metadata, database, and auth code out of client bundl
 ## Complexity Tracking
 
 > The constitution requires every new dependency, layer, or pattern, and every budget
-> exception, to be justified here. This is a new project, so every runtime dependency is
-> listed.
+> exception, to be justified here. This is a new project, so every dependency is listed:
+> runtime, dev tooling, and CI actions.
 
 | Item | Why Needed | Simpler Alternative Rejected Because |
 |------|------------|-------------------------------------|
@@ -174,5 +174,12 @@ handlers), which keeps the metadata, database, and auth code out of client bundl
 | exifr | Reads capture date from JPEG/PNG/WebP/HEIC | sharp exposes only raw EXIF bytes. Writing an EXIF/IFD parser is more custom code than it's worth (R7) |
 | heic-decode | FR-008 requires HEIC. sharp's prebuilt binaries can't decode HEVC | Rejecting HEIC violates FR-008. System libheif makes deployment platform-dependent (R6) |
 | server-only | Makes the build fail if code in `src/server/` (database, auth, metadata stripping) is imported into a client bundle. It adds nothing at runtime | Relying on convention alone: one stray import would silently ship server code into the browser bundle |
+| Vitest (dev) | Unit and integration tests (Quality Gate 3). Native TypeScript/ESM support with no transpile config | Jest needs extra transform setup for ESM and TypeScript. `node:test` has no path-alias resolution or workspace projects (R15) |
+| @playwright/test (dev) | E2E, keyboard, 320 px, and WebKit coverage (Gate 3, Principle III) | Cypress has no WebKit support and only limited multi-server setup |
+| @axe-core/playwright (dev) | Automated a11y checks with zero serious or critical violations (Gate 4, SC-006) | Manual audits can't gate CI. pa11y adds a second browser driver |
+| @lhci/cli + puppeteer (dev) | LCP/CLS budget assertions (Gate 6, SC-002). puppeteer runs the sign-in script that Lighthouse CI requires for authenticated pages | Running Lighthouse by hand can't gate CI. Measuring LCP inside Playwright doesn't give the mobile preset or throttling |
+| tsx (dev) | Runs the TypeScript scripts (`migrate`, `seed`, checks) without a build step | Compiling scripts with `tsc` adds a second build output. Plain JS scripts would lose type sharing with `src/server` |
+| ESLint + Prettier (dev) | Gate 1 (lint and format). `eslint-config-next` is the framework default | None. Required by the constitution |
+| gitleaks-action (CI only) | Secret scan (Gate 5, Principle IV) | GitHub secret scanning isn't available on every plan and can't fail a PR check locally |
 | Custom `strip-metadata.ts` (about 200 lines) | FR-015 requires removing all personal metadata **without** lowering quality | sharp re-encoding lowers JPEG quality. exiftool-vendored bundles Perl and spawns a process per upload. piexifjs misses XMP and IPTC (R6) |
 | **Budget exception**: `POST /api/photos` p95 > 500 ms for HEIC files and for JPEG/PNG/WebP files over 10 MB | HEIC decoding in WebAssembly takes about 1–2 s for 12 MP, and hashing, stripping, and previewing a 50 MB file is I/O-bound. These costs are inherent to FR-008 and FR-009 | Async/background processing would add a job queue and a "processing" state the spec doesn't have. The budget still applies to JPEG/PNG/WebP ≤ 10 MB, and HEIC is tracked as its own metric. The user-facing goal SC-004 (100 photos ≤ 2 min) remains mandatory. **Needs project owner approval** per the constitution |

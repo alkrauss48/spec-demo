@@ -39,8 +39,8 @@ and a document `<title>` naming the view.
 | Preview failed | A thumbnail fails to load | That mosaic cell shows a neutral placeholder. The tile link still works (edge case) |
 | Limit reached | 1,000 photos | Usage line highlighted. **Add photos** stays enabled, but rejected files show the limit message |
 
-**Keyboard**: Tab moves through the skip link, **Add photos**, and each tile in visual
-order. Enter opens a tile. The focus ring is visible on every tile (US1-AS4).
+**Keyboard**: Tab moves through the skip link, the header's **Sign out** button, **Add
+photos**, and each tile in visual order. Enter opens a tile. The focus ring is visible on every tile (US1-AS4).
 
 **Layout**: The grid uses `repeat(auto-fill, minmax(9.5rem, 1fr))`. At 320 px it shows 2
 columns with no horizontal scroll.

@@ -95,7 +95,9 @@ defaults, as few dependencies as possible.
       matching VP8X flags, and fix the RIFF size.
   - **HEIC/HEIF**: decode with **heic-decode** (libheif compiled to WebAssembly), then
     encode a full-resolution JPEG at quality 95 with 4:4:4 chroma using sharp. sharp writes
-    no metadata by default. The HEIC original is not kept.
+    no metadata by default. The HEIC original is not kept. heic-decode applies the HEIF
+    `irot`/`imir` transforms, so the output is upright and the HEIC's EXIF Orientation is
+    ignored (width and height come from the decoded image).
 - **Rationale**: The spec requires removing all personal metadata *and* keeping full
   resolution and visible quality. Re-encoding JPEG/PNG/WebP through an image library would
   strip the metadata but lower quality (generational JPEG loss). An allow-list, rather than
@@ -260,7 +262,8 @@ defaults, as few dependencies as possible.
     date_source, duration_ms), `photo.upload.rejected` (reason code),
     `photo.upload.duplicate`, `library.render` (album_count, duration_ms),
     `album.render` (duration_ms), `photo.render` (duration_ms),
-    `media.served` (variant, status, duration_ms), `client.error`.
+    `media.served` (variant, status, duration_ms), `media.completed` (variant, status,
+    total_ms), `client.error`.
 - **Alternatives considered**: *pino*. Very good, but a dependency for what is a few lines
   of `JSON.stringify` at this scale. It is a drop-in replacement if log volume grows.
 
