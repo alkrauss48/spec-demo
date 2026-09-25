@@ -1,0 +1,43 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(var(--tile-min), calc(50% - var(--space-2))), 1fr)
+  );
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Off-screen items skip layout and paint, which keeps 1,000-photo albums responsive (R12). */
+.item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 10rem;
+}
+
+.link {
+  position: relative;
+  display: block;
+  border-radius: var(--radius-md);
+}
+
+.link:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+.badge {
+  position: absolute;
+  left: var(--space-1);
+  bottom: var(--space-1);
+}

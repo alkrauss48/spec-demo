@@ -1,0 +1,37 @@
+{
+  "ci": {
+    "collect": {
+      "url": ["http://localhost:3000/", "http://localhost:3000/albums/2026-03-14"],
+      "startServerCommand": "npm start",
+      "startServerReadyPattern": "Ready",
+      "numberOfRuns": 3,
+      "puppeteerScript": "./scripts/lighthouse-auth.cjs",
+      "puppeteerLaunchOptions": { "args": ["--no-sandbox"] },
+      "settings": {
+        "formFactor": "mobile",
+        "throttlingMethod": "simulate",
+        "screenEmulation": {
+          "mobile": true,
+          "width": 412,
+          "height": 823,
+          "deviceScaleFactor": 1.75
+        },
+        "disableStorageReset": true,
+        "onlyCategories": ["performance", "accessibility"]
+      }
+    },
+    "assert": {
+      "assertions": {
+        "largest-contentful-paint": [
+          "error",
+          { "maxNumericValue": 2500, "aggregationMethod": "median-run" }
+        ],
+        "cumulative-layout-shift": [
+          "error",
+          { "maxNumericValue": 0.1, "aggregationMethod": "median-run" }
+        ]
+      }
+    },
+    "upload": { "target": "filesystem", "outputDir": ".lighthouseci" }
+  }
+}

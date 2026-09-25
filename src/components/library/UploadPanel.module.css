@@ -1,0 +1,34 @@
+/* Lays the button and panel out as items of the library header, the panel on its own row. */
+.root {
+  display: contents;
+}
+
+.controls {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.panel {
+  flex-basis: 100%;
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.summary {
+  margin: 0;
+  font-weight: 600;
+}
+
+.problems {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.problems li + li {
+  margin-top: var(--space-1);
+}

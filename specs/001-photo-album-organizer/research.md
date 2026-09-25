@@ -84,8 +84,9 @@ defaults, as few dependencies as possible.
   - **JPEG, PNG, WebP**: **lossless container-level stripping** in a small in-house module
     (`src/server/photos/strip-metadata.ts`). It rewrites the file keeping only an
     allow-list of image-data segments or chunks. Pixel data is never decoded or re-encoded.
-    - JPEG: keep SOI, APP0 (JFIF), APP2 (ICC profile), DQT, DHT, SOF*, DRI, SOS and scan
-      data, and EOI. Drop APP1 (EXIF/XMP), APP13 (IPTC), APP3–APP15, and COM. If the
+    - JPEG: keep SOI, APP0 (JFIF), APP2 (ICC profile), APP14 (Adobe color-transform
+      flag, needed to decode CMYK/YCCK JPEGs correctly), DQT, DHT, SOF*, DRI, SOS and scan
+      data, and EOI. Drop APP1 (EXIF/XMP), APP13 (IPTC), the rest of APP3–APP15, and COM. If the
       original EXIF Orientation is not 1, write a new minimal APP1 EXIF block containing
       **only** the Orientation tag, so the photo still displays upright.
     - PNG: keep IHDR, PLTE, IDAT, IEND, tRNS, gAMA, cHRM, sRGB, iCCP, sBIT, pHYs, bKGD.
@@ -94,7 +95,9 @@ defaults, as few dependencies as possible.
       matching VP8X flags, and fix the RIFF size.
   - **HEIC/HEIF**: decode with **heic-decode** (libheif compiled to WebAssembly), then
     encode a full-resolution JPEG at quality 95 with 4:4:4 chroma using sharp. sharp writes
-    no metadata by default. The HEIC original is not kept.
+    no metadata by default. The HEIC original is not kept. heic-decode applies the HEIF
+    `irot`/`imir` transforms, so the output is upright and the HEIC's EXIF Orientation is
+    ignored (width and height come from the decoded image).
 - **Rationale**: The spec requires removing all personal metadata *and* keeping full
   resolution and visible quality. Re-encoding JPEG/PNG/WebP through an image library would
   strip the metadata but lower quality (generational JPEG loss). An allow-list, rather than
@@ -258,7 +261,9 @@ defaults, as few dependencies as possible.
   - **Signals that confirm the feature works**: `photo.upload.accepted` (format, bytes,
     date_source, duration_ms), `photo.upload.rejected` (reason code),
     `photo.upload.duplicate`, `library.render` (album_count, duration_ms),
-    `media.served` (variant, status), `client.error`.
+    `album.render` (duration_ms), `photo.render` (duration_ms),
+    `media.served` (variant, status, duration_ms), `media.completed` (variant, status,
+    total_ms), `client.error`.
 - **Alternatives considered**: *pino*. Very good, but a dependency for what is a few lines
   of `JSON.stringify` at this scale. It is a drop-in replacement if log volume grows.
 

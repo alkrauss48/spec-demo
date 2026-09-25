@@ -71,9 +71,10 @@ hand.
 
 ```bash
 npm run seed -- --user perf@example.test --photos 1000 --albums 100
+npm run seed -- --user perf-large@example.test --photos 1000 --albums 1 --start 2026-03-14
 npm run build && npm start
-npm run perf:lighthouse     # Lighthouse CI, mobile preset (Moto G Power, 4G) against / and a 1,000-photo album
-npm run perf:upload         # Playwright: 100 mixed JPEG/HEIC fixtures in one action on a throttled 50 Mbps profile
+npm run perf:lighthouse     # Lighthouse CI, mobile preset (Moto G Power, 4G) against / (perf@) and /albums/2026-03-14 (perf-large@)
+npm run perf:upload         # Playwright: 100 mixed JPEG/HEIC fixtures in one action on a throttled 50 Mbps profile, then 20 PNG/WebP and >10 MB files for write p95
 ```
 
 | Metric | Budget | Where |
@@ -81,8 +82,9 @@ npm run perf:upload         # Playwright: 100 mixed JPEG/HEIC fixtures in one ac
 | LCP on `/` (100 albums) | ≤ 2.5 s p75 | Lighthouse (SC-002) |
 | INP / CLS | ≤ 200 ms / ≤ 0.1 | Lighthouse and Playwright interaction trace, incl. scrolling a 1,000-photo album |
 | Initial JS per route | ≤ 200 KB compressed | `next build` output, checked by `npm run perf:bundle` |
-| Page render time on the server (read) | p95 ≤ 300 ms | `library.render.duration_ms` in logs during the Lighthouse run |
-| `POST /api/photos` (write) | p95 ≤ 500 ms for JPEG ≤ 10 MB | `photo.upload.accepted.duration_ms`. HEIC is tracked separately; see plan's Complexity Tracking |
+| Page render time on the server (read) | p95 ≤ 300 ms | `library.render` and `album.render` `duration_ms`, measured by `tests/perf/read-latency.spec.ts` (T091) |
+| Media reads `thumb` / `full` (read) | p95 ≤ 300 ms (`full`: to headers sent; `thumb`: total response) | `media.served.duration_ms` (`full`), `media.completed.total_ms` (`thumb`), measured by T091 |
+| `POST /api/photos` (write) | p95 ≤ 500 ms for JPEG/PNG/WebP ≤ 10 MB | `photo.upload.accepted.duration_ms`. HEIC is tracked separately; see plan's Complexity Tracking |
 | 100-photo upload | ≤ 2 min | `perf:upload` (SC-004) |
 
 ## Observability check (Principle V)

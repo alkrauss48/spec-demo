@@ -32,7 +32,8 @@ in [research.md](./research.md).
 
 **Primary Dependencies**: Next.js 15 (App Router) with React 19; better-sqlite3; Better
 Auth (email and password); sharp (preview generation, HEIC → JPEG encoding); exifr
-(capture-date read); heic-decode (HEIC decode, WebAssembly)
+(capture-date read); heic-decode (HEIC decode, WebAssembly); server-only (build-time guard
+for server modules)
 
 **Storage**: SQLite file (`DATABASE_PATH`) for users, sessions, and photos. Local
 filesystem (`MEDIA_ROOT`) for the `full` and `thumb` image files
@@ -51,8 +52,9 @@ Android
 scrolling a 1,000-photo album. 100 photos uploaded and filed in ≤ 2 min (SC-004). Finding an
 album by date in under 10 s (SC-001)
 
-**Constraints**: ≤ 200 KB initial JS per route. Read p95 ≤ 300 ms, write p95 ≤ 500 ms (HEIC
-exception below). No personal metadata in stored files, the database, or logs (FR-015).
+**Constraints**: ≤ 200 KB initial JS per route. Read p95 ≤ 300 ms, measured as time-to-first-byte
+for `GET /media/.../full` (streaming a large file depends on network speed) and as total
+response time for the pages and `thumb`. Write p95 ≤ 500 ms (exception below). No personal metadata in stored files, the database, or logs (FR-015).
 Full resolution kept. 50 MB per file. WCAG 2.2 AA. Works from 320 px
 
 **Scale/Scope**: ≤ 1,000 photos per user (≈ 100 albums typical, up to 1,000 photos in one
@@ -69,10 +71,11 @@ album). 3 main views plus sign-in/sign-up. 3 HTTP endpoints plus Better Auth rou
 | III | **Accessibility & UX consistency**: WCAG 2.2 AA, axe in CI, shared components and tokens, loading/empty/error states, 320 px | ✅ | ✅ | ui-routes.md defines accessible names, keyboard behavior, and focus return, plus Loading/Empty/Error for every view. `tokens.css` and `src/components/ui/` are the shared set (R14). V11, V12, and V15 in quickstart |
 | IV | **Security & Privacy**: server-side validation, output encoding, parameterized queries, no committed secrets, server-side authorization, data minimization, no personal data in logs, dependency audit | ✅ | ✅ | Magic-byte and size validation on the server (R5). React escaping by default, and no `dangerouslySetInnerHTML`. Prepared statements only (R2). Secrets come from env. Every query is scoped by user, and other users' resources return 404 (R10). Origin check on POST. EXIF is removed with an allow-list (R6). Logs exclude file names and EXIF (R16). `npm audit` gate |
 | V | **Observability**: JSON logs with level, timestamp, and request ID; errors with context; friendly user errors; signals named | ✅ | ✅ | R16 names the logger, request-ID middleware, `/api/client-errors`, and the signal list. Error schema returns only safe messages plus `requestId` |
-| — | **Performance budgets**: work that affects budgets identified and measured | ✅ | ⚠️ Exception | Budget-sensitive items: tile previews (LCP), large album (INP), upload processing (write p95). The measurement plan is in quickstart. **HEIC uploads exceed write p95 ≤ 500 ms**, so the exception is documented below |
+| — | **Performance budgets**: work that affects budgets identified and measured | ✅ | ⚠️ Exception (pending approval) | Budget-sensitive items: tile previews (LCP), large album (INP), upload processing (write p95). The measurement plan is in quickstart. **HEIC uploads exceed write p95 ≤ 500 ms**, so the exception is documented below |
 
-**Gate result**: PASS. The one budget exception is recorded, with justification, in
-Complexity Tracking.
+**Gate result**: PASS, conditional. The one budget exception is recorded in Complexity
+Tracking but is **not yet approved**. This feature MUST NOT merge until T089 records the
+project owner's approval (constitution "Performance Budgets").
 
 ## Project Structure
 
@@ -95,27 +98,30 @@ specs/001-photo-album-organizer/
 ```text
 src/
 ├── app/                              # Next.js App Router
-│   ├── layout.tsx                    # Root layout, skip link, tokens, error reporter
-│   ├── page.tsx                      # Library (/)
-│   ├── loading.tsx | error.tsx | not-found.tsx
+│   ├── layout.tsx                    # Root layout, skip link, tokens, error reporter (no session lookup)
+│   ├── (library)/page.tsx + loading.tsx  # Library (/); route group keeps its loading boundary off other routes
+│   ├── error.tsx | not-found.tsx
 │   ├── albums/[date]/
-│   │   ├── page.tsx                  # Album view
-│   │   └── photos/[photoId]/page.tsx # Single-photo viewer
-│   ├── sign-in/page.tsx | sign-up/page.tsx
+│   │   ├── layout.tsx                # Ownership check before streaming, so misses are real 404s
+│   │   ├── (album)/page.tsx + loading.tsx  # Album view
+│   │   └── photos/[photoId]/layout.tsx + page.tsx + loading.tsx  # Single-photo viewer
+│   ├── sign-in/page.tsx + actions.ts | sign-up/page.tsx + actions.ts
 │   ├── api/
 │   │   ├── auth/[...all]/route.ts    # Better Auth handler
 │   │   ├── photos/route.ts           # POST upload
 │   │   └── client-errors/route.ts    # POST client error report
 │   └── media/photos/[photoId]/[variant]/route.ts  # GET thumb|full (owner only)
 ├── components/
-│   ├── ui/                           # Shared set: Button, ProgressBar, EmptyState, ErrorState, LoadingState, VisuallyHidden
+│   ├── ui/                           # Shared set: Button, ProgressBar, EmptyState, ErrorState, LoadingState, VisuallyHidden, SafeImage, ErrorReporter (client), SiteHeader, SignOutButton
 │   ├── library/                      # DateGroup, AlbumTile, TileMosaic, UploadPanel (client)
 │   └── album/                        # PhotoGrid, FocusFromHash (client), PhotoViewer, ViewerKeys (client)
 ├── server/
+│   ├── env.ts                        # env loader and validation
 │   ├── db.ts                         # better-sqlite3 connection + migration runner
 │   ├── auth.ts                       # Better Auth config, requireUser()
 │   ├── log.ts                        # JSON logger, request context
 │   ├── photos/
+│   │   ├── ids.ts                    # 128-bit photo IDs
 │   │   ├── detect-format.ts          # magic bytes
 │   │   ├── capture-date.ts           # exifr read + fallback rules
 │   │   ├── strip-metadata.ts         # lossless JPEG/PNG/WebP allow-list rewrite
@@ -127,7 +133,8 @@ src/
 ├── lib/
 │   └── dates.ts                      # album/group label formatting, local-time helpers (shared client/server)
 ├── styles/tokens.css
-└── middleware.ts                     # request ID, auth redirect for pages
+├── types/heic-decode.d.ts            # types for heic-decode, which ships none
+└── middleware.ts                     # request ID, auth redirect for pages (not /api/photos; see below)
 
 db/migrations/                        # 0001_photo.sql (Better Auth tables via its CLI migration)
 
@@ -135,9 +142,17 @@ tests/
 ├── fixtures/photos/                  # reference set (dates, GPS, HEIC/PNG/WebP, non-image, duplicate, 51 MB)
 ├── unit/                             # detect-format, capture-date, strip-metadata, queries, dates
 ├── integration/                      # POST /api/photos, media auth, limit & duplicate races
-└── e2e/                              # US1–US3 scenarios, keyboard, axe, 320px, states, privacy
+├── e2e/                              # US1–US3 scenarios, keyboard, axe, 320px, states, privacy
+└── perf/                             # upload SC-004, large-album INP, read latency
 scripts/
-└── seed.ts                           # load/perf seeding (quickstart V14 and perf)
+├── migrate.ts                        # npm run db:migrate
+├── seed.ts                           # load/perf seeding (quickstart V14 and perf)
+├── check-bundle.ts                   # 200 KB initial-JS budget
+├── check-log-privacy.ts              # no personal data in server logs
+└── lighthouse-auth.cjs               # Lighthouse CI sign-in script
+
+lighthouserc.json                     # Lighthouse CI budgets
+.github/workflows/ci.yml              # constitution quality gates
 ```
 
 **Structure Decision**: A single full-stack Next.js project at the repository root. The spec
@@ -149,8 +164,8 @@ handlers), which keeps the metadata, database, and auth code out of client bundl
 ## Complexity Tracking
 
 > The constitution requires every new dependency, layer, or pattern, and every budget
-> exception, to be justified here. This is a new project, so every runtime dependency is
-> listed.
+> exception, to be justified here. This is a new project, so every dependency is listed:
+> runtime, dev tooling, and CI actions.
 
 | Item | Why Needed | Simpler Alternative Rejected Because |
 |------|------------|-------------------------------------|
@@ -160,5 +175,16 @@ handlers), which keeps the metadata, database, and auth code out of client bundl
 | sharp | Preview generation and HEIC → JPEG encoding, fast and native | Browser-side resizing can't be trusted and still needs server validation. Pure-JS resizers are too slow for 100-photo batches |
 | exifr | Reads capture date from JPEG/PNG/WebP/HEIC | sharp exposes only raw EXIF bytes. Writing an EXIF/IFD parser is more custom code than it's worth (R7) |
 | heic-decode | FR-008 requires HEIC. sharp's prebuilt binaries can't decode HEVC | Rejecting HEIC violates FR-008. System libheif makes deployment platform-dependent (R6) |
+| server-only | Makes the build fail if code in `src/server/` (database, auth, metadata stripping) is imported into a client bundle. It adds nothing at runtime | Relying on convention alone: one stray import would silently ship server code into the browser bundle |
+| Vitest (dev) | Unit and integration tests (Quality Gate 3). Native TypeScript/ESM support with no transpile config | Jest needs extra transform setup for ESM and TypeScript. `node:test` has no path-alias resolution or workspace projects (R15) |
+| @playwright/test (dev) | E2E, keyboard, 320 px, and WebKit coverage (Gate 3, Principle III) | Cypress has no WebKit support and only limited multi-server setup |
+| @axe-core/playwright (dev) | Automated a11y checks with zero serious or critical violations (Gate 4, SC-006) | Manual audits can't gate CI. pa11y adds a second browser driver |
+| @lhci/cli + puppeteer (dev) | LCP/CLS budget assertions (Gate 6, SC-002). puppeteer runs the sign-in script that Lighthouse CI requires for authenticated pages | Running Lighthouse by hand can't gate CI. Measuring LCP inside Playwright doesn't give the mobile preset or throttling |
+| tsx (dev) | Runs the TypeScript scripts (`migrate`, `seed`, checks) without a build step | Compiling scripts with `tsc` adds a second build output. Plain JS scripts would lose type sharing with `src/server` |
+| ESLint + Prettier (dev) | Gate 1 (lint and format). `eslint-config-next` is the framework default | None. Required by the constitution |
+| gitleaks-action (CI only) | Secret scan (Gate 5, Principle IV) | GitHub secret scanning isn't available on every plan and can't fail a PR check locally |
+| kysely (declared peer of Better Auth) | Better Auth needs a Kysely `SqliteDialect` so it can run on its own connection with interactive transactions off. Kysely's SQLite driver has no connection lock, so with transactions on, concurrent requests interleaved `BEGIN`/`COMMIT` on one connection and some session lookups never settled (found in T056) | Passing the better-sqlite3 handle directly (Better Auth's default) turns on those unlocked transactions |
+| `overrides.postcss` ^8.5.23 in package.json | Next 15.5 pins postcss 8.4.31, which has high-severity advisories; the gate is `npm audit --omit=dev --audit-level=high` | Upgrading to Next 16 is a breaking change outside this feature |
 | Custom `strip-metadata.ts` (about 200 lines) | FR-015 requires removing all personal metadata **without** lowering quality | sharp re-encoding lowers JPEG quality. exiftool-vendored bundles Perl and spawns a process per upload. piexifjs misses XMP and IPTC (R6) |
-| **Budget exception**: `POST /api/photos` p95 > 500 ms for HEIC and for very large files | HEIC decoding in WebAssembly takes about 1–2 s for 12 MP, and hashing, stripping, and previewing a 50 MB file is I/O-bound. These costs are inherent to FR-008 and FR-009 | Async/background processing would add a job queue and a "processing" state the spec doesn't have. The budget still applies to JPEG/PNG/WebP ≤ 10 MB, and HEIC is tracked as its own metric. The user-facing goal SC-004 (100 photos ≤ 2 min) remains mandatory. **Needs project owner approval** per the constitution |
+| **Budget exception**: `POST /api/photos` p95 > 500 ms for HEIC files and for JPEG/PNG/WebP files over 10 MB | HEIC decoding in WebAssembly takes about 1–2 s for 12 MP, and hashing, stripping, and previewing a 50 MB file is I/O-bound. These costs are inherent to FR-008 and FR-009 | Async/background processing would add a job queue and a "processing" state the spec doesn't have. The budget still applies to JPEG/PNG/WebP ≤ 10 MB, and HEIC is tracked as its own metric. The user-facing goal SC-004 (100 photos ≤ 2 min) remains mandatory. **Needs project owner approval** per the constitution |
+| **Measured (T084, 2026-09-25, local run)** | `POST /api/photos` write p95: JPEG/PNG/WebP ≤ 10 MB **358 ms** (within budget); JPEG > 10 MB **331 ms** (within budget, so only HEIC still needs the exception); HEIC 12 MP (1.5 MB) **2,436 ms**. SC-004: 100 photos (50 JPEG ≈ 5.7 MB, 50 HEIC 12 MP), 362 MB total, filed in **62–74 s** at 50 Mbps. Read p95 ≤ 13 ms; large-album worst interaction 56 ms; Lighthouse LCP 1.0–1.2 s on `/` and 1.4–1.9 s on a 1,000-photo album, CLS 0 | Approval: _pending (T089)_ |

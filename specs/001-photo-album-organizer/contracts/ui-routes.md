@@ -39,8 +39,8 @@ and a document `<title>` naming the view.
 | Preview failed | A thumbnail fails to load | That mosaic cell shows a neutral placeholder. The tile link still works (edge case) |
 | Limit reached | 1,000 photos | Usage line highlighted. **Add photos** stays enabled, but rejected files show the limit message |
 
-**Keyboard**: Tab moves through the skip link, **Add photos**, and each tile in visual
-order. Enter opens a tile. The focus ring is visible on every tile (US1-AS4).
+**Keyboard**: Tab moves through the skip link, the header's **Sign out** button, **Add
+photos**, and each tile in visual order. Enter opens a tile. The focus ring is visible on every tile (US1-AS4).
 
 **Layout**: The grid uses `repeat(auto-fill, minmax(9.5rem, 1fr))`. At 320 px it shows 2
 columns with no horizontal scroll.
@@ -78,8 +78,10 @@ returns 404.
 **Renders**
 
 - `<h1>` visually hidden: "Photo {n} of {total}, Mar 14, 2026".
-- `<img src="/media/photos/{id}/full" alt="…" width height>` scaled to fit the viewport
-  (`object-fit: contain`, max 100vw × available height) at full original resolution.
+- `<img src="/media/photos/{id}/full" alt="Photo {n} of {total}, taken {Mar 14, 2026, 11:30 PM}" width height>`,
+  or for `dateSource = upload`: `alt="Photo {n} of {total}, date not recorded, added {Mar 20, 2026}"`.
+  The image is scaled to fit the viewport (`object-fit: contain`, max 100vw × available
+  height) at full original resolution.
 - Caption: capture date and time ("Mar 14, 2026, 11:30 PM"), or "Date not recorded, added
   Mar 20, 2026" with the badge.
 - Controls (real links, so they work without JavaScript): **Previous**, **Next** (omitted
